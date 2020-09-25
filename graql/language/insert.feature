@@ -14,80 +14,164 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-Feature: Graql Segfault Query
+Feature: Graql Insert Query
 
-  Background: do as little as possible
+  Background: Open connection and create a simple extensible schema
     Given connection has been opened
     Given connection delete all databases
     Given connection create database: grakn
     Given connection open schema session for database: grakn
-    Given session opens transaction of type: write
-    Given graql define
-      """
-      define
 
-      person sub entity,
-        plays employment:employee,
-        owns name,
-        owns age,
-        owns ref @key;
-
-      company sub entity,
-        plays employment:employer,
-        owns name,
-        owns ref @key;
-
-      employment sub relation,
-        relates employee,
-        relates employer,
-        owns ref @key;
-
-      name sub attribute,
-        value string;
-
-      age sub attribute,
-        value long;
-
-      ref sub attribute,
-        value long;
-      """
-    Given transaction commits
-    Given connection close all sessions
-    Given connection open data session for database: grakn
-    Given session opens transaction of type: write
-
-  # TODO: fix (currently causes a segfault later in the test suite!!)
-  Scenario: test scenario
-    When get answers of graql insert
-      """
-      insert $x isa! person, has name "Harry", has ref 0;
-      """
-    # test 2
-    Given connection close all sessions
+  Scenario: segfault test 1
+    Given connection delete all databases
+    Given connection create database: grakn
     Given connection open schema session for database: grakn
     Given session opens transaction of type: write
-    Given graql define
-      """
-      define
-      factory sub entity, abstract;
-      electronics-factory sub factory;
-      """
-    Given transaction commits
-    Given connection close all sessions
-    Given connection open data session for database: grakn
-    Given session opens transaction of type: write
-    Then graql insert; throws exception
-      """
-      insert $x isa factory;
-      """
-    # test 3
-    Given connection close all sessions
-    Given connection open data session for database: grakn
-    Given session opens transaction of type: write
-    Then graql insert; throws exception
-      """
-      insert $x isa thing;
-      """
+
+
+#  Scenario: when an insert has multiple statements with the same variable name, they refer to the same thing
+#    When graql insert
+#      """
+#      insert
+#      $x has name "Bond";
+#      $x has name "James Bond";
+#      $x isa person, has ref 0;
+#      """
+#    Then transaction commits
+#    Then the integrity is validated
+#    When session opens transaction of type: read
+#    When get answers of graql query
+#      """
+#      match $x has name "Bond";
+#      """
+#    When concept identifiers are
+#      |      | check | value |
+#      | BOND | key   | ref:0 |
+#    Then uniquely identify answer concepts
+#      | x    |
+#      | BOND |
+#    When get answers of graql query
+#      """
+#      match $x has name "James Bond";
+#      """
+#    Then uniquely identify answer concepts
+#      | x    |
+#      | BOND |
+#    When get answers of graql query
+#      """
+#      match $x has name "Bond", has name "James Bond";
+#      """
+#    Then uniquely identify answer concepts
+#      | x    |
+#      | BOND |
+#
+#
+#  Scenario: when running multiple identical insert queries in series, new things get created each time
+#    Given connection close all sessions
+#    Given connection open schema session for database: grakn
+#    Given session opens transaction of type: write
+#    Given graql define
+#      """
+#      define
+#      breed sub attribute, value string;
+#      dog sub entity, owns breed;
+#      """
+#    Given transaction commits
+#    Given the integrity is validated
+#    Given connection close all sessions
+#    Given connection open data session for database: grakn
+#    Given session opens transaction of type: write
+#    Given get answers of graql query
+#      """
+#      match $x isa dog;
+#      """
+#    Given answer size is: 0
+#    When graql insert
+#      """
+#      insert $x isa dog, has breed "Labrador";
+#      """
+#    Then transaction commits
+#    Then the integrity is validated
+#    When session opens transaction of type: write
+#    When get answers of graql query
+#      """
+#      match $x isa dog;
+#      """
+#    Then answer size is: 1
+#    Then graql insert
+#      """
+#      insert $x isa dog, has breed "Labrador";
+#      """
+#    Then transaction commits
+#    Then the integrity is validated
+#    When session opens transaction of type: write
+#    When get answers of graql query
+#      """
+#      match $x isa dog;
+#      """
+#    Then answer size is: 2
+#    Then graql insert
+#      """
+#      insert $x isa dog, has breed "Labrador";
+#      """
+#    Then transaction commits
+#    Then the integrity is validated
+#    When session opens transaction of type: read
+#    When get answers of graql query
+#      """
+#      match $x isa dog;
+#      """
+#    Then answer size is: 3
+#
+#
+#  @ignore-client-java
+#  # TODO: fix (currently causes a segfault later in the test suite!!)
+#  Scenario: an insert can be performed using a direct type specifier, and it functions equivalently to 'isa'
+#    When get answers of graql insert
+#      """
+#      insert $x isa! person, has name "Harry", has ref 0;
+#      """
+#    Then the integrity is validated
+#    When concept identifiers are
+#      |     | check | value |
+#      | HAR | key   | ref:0 |
+#    Then uniquely identify answer concepts
+#      | x   |
+#      | HAR |
+#
+#
+#  @ignore-client-java
+#  # TODO: fix (currently causes a segfault later in the test file)
+#  Scenario: attempting to insert an instance of an abstract type throws an error
+#    Given connection close all sessions
+#    Given connection open schema session for database: grakn
+#    Given session opens transaction of type: write
+#    Given graql define
+#      """
+#      define
+#      factory sub entity, abstract;
+#      electronics-factory sub factory;
+#      """
+#    Given transaction commits
+#    Given the integrity is validated
+#    Given connection close all sessions
+#    Given connection open data session for database: grakn
+#    Given session opens transaction of type: write
+#    Then graql insert; throws exception
+#      """
+#      insert $x isa factory;
+#      """
+#    Then the integrity is validated
+#
+#
+#  @ignore-client-java
+#  # TODO: fix (currently causes a segfault later in the test file)
+#  Scenario: attempting to insert an instance of type 'thing' throws an error
+#    Then graql insert; throws exception
+#      """
+#      insert $x isa thing;
+#      """
+#    Then the integrity is validated
 
 
 #  #######################
